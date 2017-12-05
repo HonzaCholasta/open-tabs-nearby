@@ -34,10 +34,8 @@
 		});
 	});
 
-	(await tabs.query({
+	[{id: openerTabId}] = await tabs.query({
 		active: true,
 		currentWindow: true
-	})).forEach(tab => {
-		openerTabId = tab.id;
 	});
 })();
