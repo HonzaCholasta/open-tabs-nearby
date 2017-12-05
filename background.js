@@ -9,7 +9,9 @@
 	});
 
 	tabs.onCreated.addListener(async tab => {
-		if (tab.id === tabs.TAB_ID_NONE || openerTabId === tabs.TAB_ID_NONE)
+		if (tab.id === tabs.TAB_ID_NONE ||
+			openerTabId === tabs.TAB_ID_NONE ||
+			tab.discarded)
 			return;
 
 		let openerTab = await tabs.get(openerTabId);
