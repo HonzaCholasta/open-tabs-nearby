@@ -7,7 +7,7 @@
 	"applications": {
 		"gecko": {
 			"id": "open-tabs-nearby@cholasta.net",
-			"strict_min_version": "46.0"
+			"strict_min_version": "57.0"
 		}
 	},
 	"permissions": [
