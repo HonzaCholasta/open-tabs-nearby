@@ -1,21 +1,21 @@
 {
-	"manifest_version": 2,
-	"name": "Open Tabs Nearby",
-	"version": "0.3",
-	"description": "Open tabs near to the current tab.",
-	"homepage_url": "https://github.com/HonzaCholasta/open-tabs-nearby",
-	"applications": {
-		"gecko": {
-			"id": "open-tabs-nearby@cholasta.net",
-			"strict_min_version": "57.0"
-		}
-	},
-	"permissions": [
-		"tabs"
-	],
-	"background": {
-		"scripts": [
-			"background.js"
-		]
-	}
+  "manifest_version": 2,
+  "name": "Open Tabs Nearby",
+  "version": "0.3",
+  "description": "Open tabs near to the current tab.",
+  "homepage_url": "https://github.com/HonzaCholasta/open-tabs-nearby",
+  "applications": {
+    "gecko": {
+      "id": "open-tabs-nearby@cholasta.net",
+      "strict_min_version": "57.0"
+    }
+  },
+  "permissions": [
+    "tabs"
+  ],
+  "background": {
+    "scripts": [
+      "background.js"
+    ]
+  }
 }
