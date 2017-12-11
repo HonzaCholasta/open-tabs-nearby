@@ -5,10 +5,12 @@
   let openerTabId = tabs.TAB_ID_NONE;
 
   tabs.onActivated.addListener((activeInfo) => {
+    console.log('onActivated', activeInfo);
     openerTabId = activeInfo.tabId;
   });
 
   tabs.onCreated.addListener(async (tab) => {
+    console.log('onCreated', tab);
     if (tab.id === tabs.TAB_ID_NONE
       || openerTabId === tabs.TAB_ID_NONE
       || tab.discarded) {
