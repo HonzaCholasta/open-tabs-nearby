@@ -14,21 +14,17 @@
       return;
     }
 
-    const openerTab = await tabs.get(openerTabId);
-    const currentWindow = await windows.getCurrent({
-      populate: true,
-    });
-
-    if (openerTab.windowId !== currentWindow.id) {
+    const { tabs: windowTabs } = await windows.getCurrent({ populate: true });
+    const openerTab = windowTabs.find(windowTab => windowTab.id === openerTabId);
+    if (!openerTab) {
       return;
     }
 
     let index = openerTab.index + 1;
-
-    while (currentWindow.tabs[index].pinned) {
+    while (windowTabs[index].pinned) {
       index += 1;
     }
-    while (currentWindow.tabs[index].openerTabId === openerTabId) {
+    while (windowTabs[index].openerTabId === openerTabId) {
       index += 1;
     }
 
