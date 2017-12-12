@@ -1,7 +1,7 @@
-(async () => {
+(function init() {
   'use strict';
 
-  const { windows, tabs } = browser;
+  const { runtime, tabs, windows } = browser;
   let openerTabId = tabs.TAB_ID_NONE;
 
   tabs.onActivated.addListener((activeInfo) => {
@@ -35,8 +35,15 @@
     await tabs.move(id, { index });
   });
 
-  [{ id: openerTabId }] = await tabs.query({
-    active: true,
-    currentWindow: true,
+  runtime.onInstalled.addListener(async (details) => {
+    const { reason } = details;
+    if (reason !== 'install' && reason !== 'update') {
+      return;
+    }
+
+    const [activeTab] = await tabs.query({ active: true, currentWindow: true });
+    if (activeTab) {
+      openerTabId = activeTab.id;
+    }
   });
-})();
+}());
