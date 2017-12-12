@@ -9,9 +9,8 @@
   });
 
   tabs.onCreated.addListener(async (tab) => {
-    if (tab.id === tabs.TAB_ID_NONE
-      || openerTabId === tabs.TAB_ID_NONE
-      || tab.discarded) {
+    const { id, discarded } = tab;
+    if (id === tabs.TAB_ID_NONE || openerTabId === tabs.TAB_ID_NONE || discarded) {
       return;
     }
 
@@ -33,9 +32,7 @@
       index += 1;
     }
 
-    await tabs.move(tab.id, {
-      index,
-    });
+    await tabs.move(id, { index });
   });
 
   [{ id: openerTabId }] = await tabs.query({
