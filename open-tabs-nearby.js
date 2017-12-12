@@ -9,12 +9,12 @@
   });
 
   tabs.onCreated.addListener(async (tab) => {
-    const { id, discarded } = tab;
+    const { id, windowId, discarded } = tab;
     if (id === tabs.TAB_ID_NONE || openerTabId === tabs.TAB_ID_NONE || discarded) {
       return;
     }
 
-    const { tabs: windowTabs } = await windows.getCurrent({ populate: true });
+    const { tabs: windowTabs } = await windows.get(windowId, { populate: true });
     const openerTab = windowTabs.find(windowTab => windowTab.id === openerTabId);
     if (!openerTab) {
       return;
