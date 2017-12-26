@@ -2,13 +2,37 @@
   'use strict';
 
   const { runtime, tabs, windows } = browser;
+  let busy = false;
+  const queue = [];
   let openerTabId = tabs.TAB_ID_NONE;
+
+  function synchronized(fn) {
+    return async (...args) => {
+      await new Promise((resolve) => {
+        if (!busy) {
+          busy = true; resolve();
+        } else {
+          queue.push(resolve);
+        }
+      });
+
+      try {
+        return await fn(...args);
+      } finally {
+        if (queue.length > 0) {
+          queue.shift()();
+        } else {
+          busy = false;
+        }
+      }
+    };
+  }
 
   tabs.onActivated.addListener((activeInfo) => {
     openerTabId = activeInfo.tabId;
   });
 
-  tabs.onCreated.addListener(async (tab) => {
+  tabs.onCreated.addListener(synchronized(async (tab) => {
     const { id, windowId, discarded } = tab;
     if (id === tabs.TAB_ID_NONE || openerTabId === tabs.TAB_ID_NONE || discarded) {
       return;
@@ -29,9 +53,9 @@
     }
 
     await tabs.move(id, { index });
-  });
+  }));
 
-  runtime.onInstalled.addListener(async (details) => {
+  runtime.onInstalled.addListener(synchronized(async (details) => {
     const { reason } = details;
     if (reason !== 'install' && reason !== 'update') {
       return;
@@ -41,5 +65,5 @@
     if (activeTab) {
       openerTabId = activeTab.id;
     }
-  });
+  }));
 }());
