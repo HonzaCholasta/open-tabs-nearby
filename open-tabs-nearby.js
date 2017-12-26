@@ -51,8 +51,8 @@
   }));
 
   tabs.onCreated.addListener(synchronized(async (tab) => {
-    const { id, windowId, discarded } = tab;
-    if (id === tabs.TAB_ID_NONE || !activeTabUid || discarded) {
+    const { id, windowId } = tab;
+    if (id === tabs.TAB_ID_NONE || !activeTabUid) {
       return;
     }
 
