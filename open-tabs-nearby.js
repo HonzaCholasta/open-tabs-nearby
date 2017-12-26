@@ -1,10 +1,16 @@
 (function init() {
   'use strict';
 
-  const { runtime, tabs, windows } = browser;
+  const {
+    runtime,
+    sessions,
+    tabs,
+    windows,
+  } = browser;
+
   let busy = false;
   const queue = [];
-  let openerTabId = tabs.TAB_ID_NONE;
+  let activeTabUid;
 
   function synchronized(fn) {
     return async (...args) => {
@@ -28,18 +34,43 @@
     };
   }
 
-  tabs.onActivated.addListener((activeInfo) => {
-    openerTabId = activeInfo.tabId;
-  });
+  function createUid() {
+    const array = crypto.getRandomValues(new Uint8Array(16));
+    const string = String.fromCharCode(...array);
+    return btoa(string).substr(0, 22);
+  }
 
-  tabs.onCreated.addListener(synchronized(async (tab) => {
-    const { id, windowId, discarded } = tab;
-    if (id === tabs.TAB_ID_NONE || openerTabId === tabs.TAB_ID_NONE || discarded) {
+  tabs.onActivated.addListener(synchronized(async (activeInfo) => {
+    const { tabId } = activeInfo;
+    if (tabId === tabs.TAB_ID_NONE) {
       return;
     }
 
+    const tabState = await sessions.getTabValue(tabId, 'state');
+    activeTabUid = tabState.uid;
+  }));
+
+  tabs.onCreated.addListener(synchronized(async (tab) => {
+    const { id, windowId, discarded } = tab;
+    if (id === tabs.TAB_ID_NONE || !activeTabUid || discarded) {
+      return;
+    }
+
+    const state = await sessions.getTabValue(id, 'state');
+    if (state) {
+      return;
+    }
+
+    const uid = createUid();
+    const openerTabUid = activeTabUid;
+    await sessions.setTabValue(id, 'state', { uid, openerTabUid });
+
     const { tabs: windowTabs } = await windows.get(windowId, { populate: true });
-    let index = windowTabs.findIndex(windowTab => windowTab.id === openerTabId);
+    const windowTabStates = await Promise.all((
+      windowTabs.map(windowTab => sessions.getTabValue(windowTab.id, 'state'))
+    ));
+
+    let index = windowTabStates.findIndex(tabState => tabState.uid === openerTabUid);
     if (index === -1) {
       return;
     }
@@ -48,7 +79,7 @@
     while (windowTabs[index].pinned) {
       index += 1;
     }
-    while (windowTabs[index].openerTabId === openerTabId) {
+    while (windowTabStates[index].openerTabUid === openerTabUid) {
       index += 1;
     }
 
@@ -56,14 +87,38 @@
   }));
 
   runtime.onInstalled.addListener(synchronized(async (details) => {
-    const { reason } = details;
+    const { reason, previousVersion } = details;
     if (reason !== 'install' && reason !== 'update') {
       return;
     }
 
+    if (reason === 'install' || ['0.1', '0.2', '0.3'].includes(previousVersion)) {
+      const allTabs = await tabs.query({});
+      const movableTabs = allTabs.filter(tab => tab.id !== tabs.TAB_ID_NONE);
+      const movableTabUids = movableTabs.map(createUid);
+
+      const movableTabStates = movableTabs.map((tab, index) => {
+        const uid = movableTabUids[index];
+
+        let openerTabUid = movableTabUids[movableTabs.findIndex((
+          openerTab => openerTab.id === tab.openerTabId
+        ))];
+        if (openerTabUid === undefined) {
+          openerTabUid = createUid();
+        }
+
+        return { uid, openerTabUid };
+      });
+
+      await Promise.all(movableTabs.map((
+        (tab, index) => sessions.setTabValue(tab.id, 'state', movableTabStates[index])
+      )));
+    }
+
     const [activeTab] = await tabs.query({ active: true, currentWindow: true });
     if (activeTab) {
-      openerTabId = activeTab.id;
+      const activeTabState = await sessions.getTabValue(activeTab.id, 'state');
+      activeTabUid = activeTabState.uid;
     }
   }));
 }());
