@@ -39,12 +39,12 @@
     }
 
     const { tabs: windowTabs } = await windows.get(windowId, { populate: true });
-    const openerTab = windowTabs.find(windowTab => windowTab.id === openerTabId);
-    if (!openerTab) {
+    let index = windowTabs.findIndex(windowTab => windowTab.id === openerTabId);
+    if (index === -1) {
       return;
     }
 
-    let index = openerTab.index + 1;
+    index += 1;
     while (windowTabs[index].pinned) {
       index += 1;
     }
