@@ -10,7 +10,7 @@
 
   let busy = false;
   const queue = [];
-  let activeTabUid;
+  let activeTabId;
 
   function synchronized(fn) {
     return async (...args) => {
@@ -40,29 +40,34 @@
     return btoa(string).substr(0, 22);
   }
 
-  tabs.onActivated.addListener(synchronized(async (activeInfo) => {
+  tabs.onActivated.addListener((activeInfo) => {
     const { tabId } = activeInfo;
     if (tabId === tabs.TAB_ID_NONE) {
       return;
     }
 
-    const tabState = await sessions.getTabValue(tabId, 'state');
-    activeTabUid = tabState.uid;
-  }));
+    activeTabId = tabId;
+  });
 
   tabs.onCreated.addListener(synchronized(async (tab) => {
     const { id, windowId } = tab;
-    if (id === tabs.TAB_ID_NONE || !activeTabUid) {
+    if (id === tabs.TAB_ID_NONE || activeTabId === tabs.TAB_ID_NONE) {
       return;
     }
 
-    const state = await sessions.getTabValue(id, 'state');
+    const [
+      state,
+      activeTabState,
+    ] = await Promise.all([
+      sessions.getTabValue(id, 'state'),
+      sessions.getTabValue(activeTabId, 'state'),
+    ]);
     if (state) {
       return;
     }
 
     const uid = createUid();
-    const openerTabUid = activeTabUid;
+    const openerTabUid = activeTabState.uid;
     await sessions.setTabValue(id, 'state', { uid, openerTabUid });
 
     const { tabs: windowTabs } = await windows.get(windowId, { populate: true });
@@ -117,8 +122,7 @@
 
     const [activeTab] = await tabs.query({ active: true, currentWindow: true });
     if (activeTab) {
-      const activeTabState = await sessions.getTabValue(activeTab.id, 'state');
-      activeTabUid = activeTabState.uid;
+      activeTabId = activeTab.id;
     }
   }));
 }());
