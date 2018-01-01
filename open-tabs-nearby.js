@@ -1,16 +1,13 @@
 (function init() {
   'use strict';
 
-  const {
-    runtime,
-    sessions,
-    tabs,
-    windows,
-  } = browser;
+  const { getTabValue, setTabValue } = browser.sessions;
+  const { TAB_ID_NONE, move: moveTabs, query: queryTabs } = browser.tabs;
+  const { get: getWindow } = browser.windows;
 
   let busy = false;
   const queue = [];
-  let activeTabId = tabs.TAB_ID_NONE;
+  let activeTabId = TAB_ID_NONE;
 
   function synchronized(fn) {
     return async (...args) => {
@@ -42,87 +39,77 @@
     return btoa(string).substr(0, 22);
   }
 
-  tabs.onActivated.addListener((activeInfo) => {
+  browser.tabs.onActivated.addListener((activeInfo) => {
     const { tabId } = activeInfo;
-    if (tabId === tabs.TAB_ID_NONE) {
+    if (tabId === TAB_ID_NONE) {
       return;
     }
 
     activeTabId = tabId;
   });
 
-  tabs.onCreated.addListener(synchronized(async (tab) => {
-    const { id, windowId } = tab;
-    if (id === tabs.TAB_ID_NONE || activeTabId === tabs.TAB_ID_NONE) {
+  browser.tabs.onCreated.addListener(synchronized(async (theTab) => {
+    if (theTab.id === TAB_ID_NONE || activeTabId === TAB_ID_NONE) {
       return;
     }
 
     const [
-      state,
+      theState,
       activeTabState,
     ] = await Promise.all([
-      sessions.getTabValue(id, 'state'),
-      sessions.getTabValue(activeTabId, 'state'),
+      getTabValue(theTab.id, 'state'),
+      getTabValue(activeTabId, 'state'),
     ]);
-    if (state) {
+    if (theState) {
       return;
     }
 
-    const uid = createUid();
     const openerTabUid = activeTabState.uid;
-    await sessions.setTabValue(id, 'state', { uid, openerTabUid });
 
-    const { tabs: windowTabs } = await windows.get(windowId, { populate: true });
-    const windowTabStates = await Promise.all((
-      windowTabs.map(windowTab => sessions.getTabValue(windowTab.id, 'state'))
-    ));
+    await setTabValue(theTab.id, 'state', {
+      uid: createUid(),
+      openerTabUid,
+    });
 
-    let index = windowTabStates.findIndex(tabState => tabState.uid === openerTabUid);
+    const { tabs } = await getWindow(theTab.windowId, { populate: true });
+    const states = await Promise.all(tabs.map(tab => getTabValue(tab.id, 'state')));
+
+    let index = states.findIndex(state => state.uid === openerTabUid);
     if (index === -1) {
       return;
     }
 
     index += 1;
-    while (index < windowTabs.length && windowTabs[index].pinned) {
+    while (index < tabs.length && tabs[index].pinned) {
       index += 1;
     }
-    while (index < windowTabs.length && windowTabStates[index].openerTabUid === openerTabUid) {
+    while (index < tabs.length && states[index].openerTabUid === openerTabUid) {
       index += 1;
     }
 
-    await tabs.move(id, { index });
+    await moveTabs(theTab.id, { index });
   }));
 
-  runtime.onInstalled.addListener(synchronized(async (details) => {
+  browser.runtime.onInstalled.addListener(synchronized(async (details) => {
     const { reason, previousVersion } = details;
     if (reason !== 'install' && reason !== 'update') {
       return;
     }
 
     if (reason === 'install' || ['0.1', '0.2', '0.3'].includes(previousVersion)) {
-      const allTabs = await tabs.query({});
-      const movableTabs = allTabs.filter(tab => tab.id !== tabs.TAB_ID_NONE);
-      const movableTabUids = movableTabs.map(createUid);
+      const tabs = Object.assign([], ...(await queryTabs({}))
+        .filter(tab => tab.id !== TAB_ID_NONE)
+        .map(tab => ({ [tab.id]: tab })));
+      const uids = tabs.map(createUid);
+      const states = tabs.map(tab => ({
+        uid: uids[tab.id],
+        openerTabUid: uids[tab.openerTabId] || createUid(),
+      }));
 
-      const movableTabStates = movableTabs.map((tab, index) => {
-        const uid = movableTabUids[index];
-
-        let openerTabUid = movableTabUids[movableTabs.findIndex((
-          openerTab => openerTab.id === tab.openerTabId
-        ))];
-        if (openerTabUid === undefined) {
-          openerTabUid = createUid();
-        }
-
-        return { uid, openerTabUid };
-      });
-
-      await Promise.all(movableTabs.map((
-        (tab, index) => sessions.setTabValue(tab.id, 'state', movableTabStates[index])
-      )));
+      await Promise.all(tabs.map(tab => setTabValue(tab.id, 'state', states[tab.id])));
     }
 
-    const [activeTab] = await tabs.query({ active: true, currentWindow: true });
+    const [activeTab] = await queryTabs({ active: true, currentWindow: true });
     if (activeTab) {
       activeTabId = activeTab.id;
     }
