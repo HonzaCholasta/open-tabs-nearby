@@ -10,7 +10,7 @@
 
   let busy = false;
   const queue = [];
-  let activeTabId;
+  let activeTabId = tabs.TAB_ID_NONE;
 
   function synchronized(fn) {
     return async (...args) => {
