@@ -24,6 +24,8 @@
 
       try {
         return await fn(...args);
+      } catch (e) {
+        console.error(e);
       } finally {
         if (queue.length > 0) {
           queue.shift()();

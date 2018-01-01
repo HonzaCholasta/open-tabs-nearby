@@ -5,6 +5,7 @@
     "webextensions": true
   },
   "rules": {
+    "no-console": "off",
     "strict": "off"
   }
 }
