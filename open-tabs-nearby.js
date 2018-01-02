@@ -103,7 +103,7 @@
       const uids = tabs.map(createUid);
       const states = tabs.map(tab => ({
         uid: uids[tab.id],
-        openerTabUid: uids[tab.openerTabId] || createUid(),
+        openerTabUid: ('openerTabId' in tab && uids[tab.openerTabId]) || createUid(),
       }));
 
       await Promise.all(tabs.map(tab => setTabValue(tab.id, 'state', states[tab.id])));
