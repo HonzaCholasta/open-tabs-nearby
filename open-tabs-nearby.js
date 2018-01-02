@@ -83,10 +83,10 @@
     }
 
     index += 1;
-    while (windowTabs[index].pinned) {
+    while (index < windowTabs.length && windowTabs[index].pinned) {
       index += 1;
     }
-    while (windowTabStates[index].openerTabUid === openerTabUid) {
+    while (index < windowTabs.length && windowTabStates[index].openerTabUid === openerTabUid) {
       index += 1;
     }
 
