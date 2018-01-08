@@ -64,6 +64,10 @@
     if (theState) {
       return;
     }
+    if (!activeTabState) {
+      console.error(`getTabValue(${activeTabId}) returned undefined`);
+      return;
+    }
 
     const openerTabUid = activeTabState.uid;
 
@@ -74,8 +78,13 @@
 
     const { tabs } = await getWindow(theTab.windowId, { populate: true });
     const states = await Promise.all(tabs.map(tab => getTabValue(tab.id, 'state')));
+    tabs.forEach((tab) => {
+      if (!states[tab.id]) {
+        console.error(`getTabValue(${tab.id}) returned undefined`);
+      }
+    });
 
-    let index = states.findIndex(state => state.uid === openerTabUid);
+    let index = states.findIndex(state => state && state.uid === openerTabUid);
     if (index === -1) {
       return;
     }
@@ -84,7 +93,7 @@
     while (index < tabs.length && tabs[index].pinned) {
       index += 1;
     }
-    while (index < tabs.length && states[index].openerTabUid === openerTabUid) {
+    while (index < tabs.length && states[index] && states[index].openerTabUid === openerTabUid) {
       index += 1;
     }
 
