@@ -78,8 +78,8 @@
 
     const { tabs } = await getWindow(theTab.windowId, { populate: true });
     const states = await Promise.all(tabs.map(tab => getTabValue(tab.id, 'state')));
-    tabs.forEach((tab) => {
-      if (!states[tab.id]) {
+    tabs.forEach((tab, index) => {
+      if (!states[index]) {
         console.error(`getTabValue(${tab.id}) returned undefined`);
       }
     });
