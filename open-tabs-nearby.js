@@ -77,7 +77,7 @@
 
     const tabs =
       (await queryTabs({ windowId: theTab.windowId }))
-        .filter(tab => tab.id !== TAB_ID_NONE)
+        .filter(tab => tab.id !== TAB_ID_NONE && tab.id !== theTab.id)
         .sort((a, b) => a.index - b.index);
     const states = await Promise.all(tabs.map(tab => getTabValue(tab.id, 'state')));
     tabs.forEach((tab, index) => {
