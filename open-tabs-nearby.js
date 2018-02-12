@@ -3,7 +3,6 @@
 
   const { getTabValue, setTabValue } = browser.sessions;
   const { TAB_ID_NONE, move: moveTabs, query: queryTabs } = browser.tabs;
-  const { get: getWindow } = browser.windows;
 
   let busy = false;
   const queue = [];
@@ -76,7 +75,10 @@
       openerTabUid,
     });
 
-    const { tabs } = await getWindow(theTab.windowId, { populate: true });
+    const tabs =
+      (await queryTabs({ windowId: theTab.windowId }))
+        .filter(tab => tab.id !== TAB_ID_NONE)
+        .sort((a, b) => a.index - b.index);
     const states = await Promise.all(tabs.map(tab => getTabValue(tab.id, 'state')));
     tabs.forEach((tab, index) => {
       if (!states[index]) {
@@ -97,7 +99,7 @@
       index += 1;
     }
 
-    await moveTabs(theTab.id, { index });
+    await moveTabs(theTab.id, { index: tabs[index - 1].index + 1 });
   }));
 
   browser.runtime.onInstalled.addListener(synchronized(async (details) => {
